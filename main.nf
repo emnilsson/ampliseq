@@ -78,6 +78,7 @@ def helpMessage() {
 	Other options:
 	  --untilQ2import               Skip all steps after importing into QIIME2, used for visually choosing DADA2 parameter
 	  --Q2imported [path/to/file]   Path to imported reads (e.g. "demux.qza"), used after visually choosing DADA2 parameter
+          --makeClassifier              Used to only prepare the reference database
 	  --onlyDenoising               Skip all steps after denoising, produce only sequences and abundance tables on ASV level
 	  --keepIntermediates           Keep additional intermediate files, such as trimmed reads or various QIIME2 archives
       --outdir [file]               The output directory where the results will be saved
@@ -129,7 +130,7 @@ Channel.fromPath("$projectDir/assets/matplotlibrc")
 params.untilQ2import = false
 
 params.Q2imported = false
-if (params.Q2imported) {
+if (params.Q2imported || params.makeClassifier) {
 	params.skip_fastqc = true
 	params.skip_multiqc = true
 } else {
@@ -144,7 +145,7 @@ if (params.multipleSequencingRuns) {
 }
 
 params.onlyDenoising = false
-if (params.onlyDenoising || params.untilQ2import) {
+if (params.onlyDenoising || params.untilQ2import || params.makeClassifier) {
 	params.skip_abundance_tables = true
 	params.skip_barplot = true
 	params.skip_taxonomy = true
@@ -189,6 +190,9 @@ if (params.classifier) {
 if (!params.Q2imported) { 
 	if (!params.FW_primer) { exit 1, "Option --FW_primer missing" }
 	if (!params.RV_primer) { exit 1, "Option --RV_primer missing" }
+}
+
+if (!params.Q2imported || !params.makeClassifier) {
 	if (!params.input) { exit 1, "Option --input missing" }
 }
 
@@ -217,8 +221,12 @@ if (params.double_primer && params.retain_untrimmed) {
 	exit 1, "Incompatible parameters --double_primer and --retain_untrimmed cannot be set at the same time."
 }
 
-if (!params.classifier){
+if (!params.classifier) {
         if (!(params.taxon_reference == 'silva' || params.taxon_reference == 'unite')) exit 1, "--taxon_reference need to be set to either 'silva' or 'unite'"
+}
+
+if (params.classifier && params.makeClassifier) {
+        exit 1, "Incompatible parameters, --classifier specifies a database that is prepared for use with QIIME2 while --makeClassifier prepares a database to be used with QIIME2"
 }
 
 // AWSBatch sanity checking
@@ -285,7 +293,7 @@ log.info summary.collect { k,v -> "${k.padRight(18)}: $v" }.join("\n")
 log.info "-\033[2m--------------------------------------------------\033[0m-"
 
 if( params.trunclenf == false || params.trunclenr == false ){
-	if ( !params.untilQ2import ) log.info "\n######## WARNING: No DADA2 cutoffs were specified, therefore reads will be truncated where median quality drops below ${params.trunc_qmin} but at least a fraction of ${params.trunc_rmin} of the reads will be retained.\nThe chosen cutoffs do not account for required overlap for merging, therefore DADA2 might have poor merging efficiency or even fail.\n"
+	if ( !params.untilQ2import || !params.makeClassifier ) log.info "\n######## WARNING: No DADA2 cutoffs were specified, therefore reads will be truncated where median quality drops below ${params.trunc_qmin} but at least a fraction of ${params.trunc_rmin} of the reads will be retained.\nThe chosen cutoffs do not account for required overlap for merging, therefore DADA2 might have poor merging efficiency or even fail.\n"
 }
 // Check the hostnames against configured profiles
 checkHostname()
@@ -333,7 +341,7 @@ process get_software_versions {
 }
 
 
-if (!params.Q2imported){
+if (!params.Q2imported || !params.makeClassifier){
 	/*
 	* Create a channel for optional input manifest file
 	*/
@@ -867,6 +875,9 @@ if( !params.Q2imported ){
 		file("${demux.baseName}/*-seven-number-summaries.csv") into ch_csv_demux
 		file("${demux.baseName}/*")
 	  
+                when:
+                !params.makeClassifier
+
 		"""
 		export HOME="\${PWD}/HOME"
 		
@@ -887,7 +898,10 @@ if( !params.Q2imported ){
 		output:
 		file("demux/*-seven-number-summaries.csv") into ch_csv_demux
 		file("demux/*")
-	  
+
+	        when:
+                !params.makeClassifier
+ 
 		"""
 		export HOME="\${PWD}/HOME"
 
@@ -916,7 +930,7 @@ if ( ! single_end ) {
 	stdout ch_dada_trunc
 
 	when:
-	!params.untilQ2import
+	!params.untilQ2import || !params.makeClassifier
 
 	script:
 	if( params.trunclenf == false || params.trunclenr == false ){
@@ -936,7 +950,7 @@ if ( ! single_end ) {
 	  stdout ch_dada_trunc
 
 	  when:
-	  !params.untilQ2import
+	  !params.untilQ2import || !params.makeClassifier
 
 	  script:
 	  if ( params.trunclenf == false ) {
@@ -1013,7 +1027,7 @@ if (!params.multipleSequencingRuns && !params.pacbio){
 		file("dada_report.txt")
 
 		when:
-		!params.untilQ2import
+		!params.untilQ2import || !params.makeClassifier
 
 		script:
 		def values = trunc.split(',')
@@ -1099,7 +1113,7 @@ if (!params.multipleSequencingRuns && !params.pacbio){
 		file("dada_report.txt")
 
 		when:
-		!params.untilQ2import
+		!params.untilQ2import || !params.makeClassifier
 
 		script:
 		"""
@@ -1156,7 +1170,7 @@ if (!params.multipleSequencingRuns && !params.pacbio){
 		file("${demux.baseName}-report.txt") into ch_dada_reports
 
 		when:
-		!params.untilQ2import
+		!params.untilQ2import || !params.makeClassifier
 
 		script:
 		if (trunclenf.toInteger() + trunclenr.toInteger() <= 10) { 
@@ -1217,7 +1231,7 @@ if (!params.multipleSequencingRuns && !params.pacbio){
 		file("dada_report.txt")
 
 		when:
-		!params.untilQ2import
+		!params.untilQ2import || !params.makeClassifier
 
 		script:
 		def TABLES = ''
@@ -1298,6 +1312,8 @@ process classifier {
 	file("taxonomy.qza") into (ch_qiime_taxonomy_for_filter,ch_qiime_taxonomy_for_relative_abundance_reduced_taxa,ch_qiime_taxonomy_for_barplot,ch_qiime_taxonomy_for_ancom,ch_qiime_taxonomy_for_export_filtered_dada_output)
 	file("taxonomy/taxonomy.tsv") into ch_tsv_taxonomy
 
+        when:
+        !params.makeClassifier
   
 	"""
 	export HOME="\${PWD}/HOME"
@@ -1353,6 +1369,9 @@ if (params.exclude_taxa == "none" && !params.min_frequency && !params.min_sample
 		output:
 		file("filtered-table.qza") into (ch_qiime_table_for_filtered_dada_output, ch_qiime_table_for_relative_abundance_asv,ch_qiime_table_for_relative_abundance_reduced_taxa,ch_qiime_table_for_ancom,ch_qiime_table_for_barplot,ch_qiime_table_for_alpha_rarefaction, ch_qiime_table_for_diversity_core)
 		file("filtered-sequences.qza") into (ch_qiime_repseq_for_dada_output,ch_qiime_repseq_for_tree)
+
+                when:
+                !params.makeClassifier
 
 		script:
 		if ( "${params.min_frequency}" == "false" ) { minfrequency = 1 } else { minfrequency = "${params.min_frequency}" }
@@ -1422,6 +1441,9 @@ process export_filtered_dada_output {
 	file("filtered/*")
 	file("abs-abund-table-*.tsv")
 
+        when:
+        !params.makeClassifier
+
 	"""
 	export HOME="\${PWD}/HOME"
 
@@ -1474,6 +1496,9 @@ process report_filter_stats {
 
 	output:
 	file("count_table_filter_stats.tsv")
+
+        when:
+        !params.makeClassifier
 	
 	"""
 	count_table_filter_stats.py unfiltered_table filtered_table
@@ -1766,7 +1791,7 @@ process metadata_category_all {
 
 	when:
 	(!params.skip_ancom || !params.skip_diversity_indices) &&
-	(!params.untilQ2import && !params.onlyDenoising)
+	(!params.untilQ2import && !params.onlyDenoising && !params.makeClassifier)
 
 	script:
 	if( !params.metadata_category )
