@@ -163,6 +163,15 @@ if (params.onlyDenoising || params.untilQ2import) {
 params.manifest = false
 
 /*
+ * Define supported databases
+ */
+unite8map = [ help: "The Unite db", fmtscript: "create_unite.sh", version: "8", file:"https://files.plutof.ut.ee/public/orig/85/30/853011150A25C68BC48CEBB4D6E389834AB0CA5D27099853274ADFB347D842AB.gz" ]
+silva132map = [ help: "The Silva db, version 132", fmtscript: "format_silva.R", version: "132" ]
+silva138map = [ help: "The Silva db, version 138", fmtscript: "format_silva.R", version: "138",  file: [ "https://www.arb-silva.de/fileadmin/silva_databases/current/Exports/SILVA_138.1_SSURef_NR99_tax_silva.fasta.gz.md5", "https://www.arb-silva.de/fileadmin/silva_databases/current/Exports/SILVA_138.1_SSURef_tax_silva.fasta.gz.md5" ] ]
+
+taxon_db_maps = [ "unite": unite8map, "silva=132": silva132map, "silva=138": silva138map, "silva": silva138map ]
+
+/*
  * Import input files
  */
 if (params.metadata) {
