@@ -129,6 +129,8 @@ Channel.fromPath("$projectDir/assets/matplotlibrc")
  */
 params.untilQ2import = false
 
+params.makeClassifier = false
+
 params.Q2imported = false
 if (params.Q2imported || params.makeClassifier) {
 	params.skip_fastqc = true
@@ -293,7 +295,7 @@ log.info summary.collect { k,v -> "${k.padRight(18)}: $v" }.join("\n")
 log.info "-\033[2m--------------------------------------------------\033[0m-"
 
 if( params.trunclenf == false || params.trunclenr == false ){
-	if ( !params.untilQ2import || !params.makeClassifier ) log.info "\n######## WARNING: No DADA2 cutoffs were specified, therefore reads will be truncated where median quality drops below ${params.trunc_qmin} but at least a fraction of ${params.trunc_rmin} of the reads will be retained.\nThe chosen cutoffs do not account for required overlap for merging, therefore DADA2 might have poor merging efficiency or even fail.\n"
+	if ( !params.untilQ2import && !params.makeClassifier ) log.info "\n######## WARNING: No DADA2 cutoffs were specified, therefore reads will be truncated where median quality drops below ${params.trunc_qmin} but at least a fraction of ${params.trunc_rmin} of the reads will be retained.\nThe chosen cutoffs do not account for required overlap for merging, therefore DADA2 might have poor merging efficiency or even fail.\n"
 }
 // Check the hostnames against configured profiles
 checkHostname()
@@ -341,7 +343,7 @@ process get_software_versions {
 }
 
 
-if (!params.Q2imported || !params.makeClassifier){
+if (!params.Q2imported && !params.makeClassifier){
 	/*
 	* Create a channel for optional input manifest file
 	*/
