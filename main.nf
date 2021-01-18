@@ -186,6 +186,12 @@ if (params.classifier) {
 		   .set { ch_qiime_classifier }
 }
 
+//If only creating a database with '--makeClassifier', make sure downstream channels are set to empty
+if (params.makeClassifier) {
+        Channel.empty()
+                   .into { ch_qiime_demux_visualisation; ch_qiime_demux_dada }
+}
+
 /*
  * Sanity check input values
  */
