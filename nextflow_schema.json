@@ -248,7 +248,10 @@
                 "onlyDenoising": {
                     "type": "boolean",
                     "description": "Skip all steps after denoising, produce only sequences and abundance tables on ASV level"
-                }
+                },
+                "makeClassifier": {
+                    "type": "boolean",
+                    "desription": "Used to only prepare the reference database, useful while debugging or testing different reference databases"
             }
         },
         "skipping_specific_steps": {
