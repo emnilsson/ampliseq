@@ -168,11 +168,24 @@ params.manifest = false
 /*
  * Define supported databases
  */
-unite8map = [ help: "The Unite db", fmtscript: "create_unite.sh", version: "8", file:"https://files.plutof.ut.ee/public/orig/85/30/853011150A25C68BC48CEBB4D6E389834AB0CA5D27099853274ADFB347D842AB.gz" ]
-silva132map = [ help: "The Silva db, version 132", fmtscript: "format_silva.R", version: "132" ]
-silva138map = [ help: "The Silva db, version 138", fmtscript: "format_silva.R", version: "138",  file: [ "https://www.arb-silva.de/fileadmin/silva_databases/current/Exports/SILVA_138.1_SSURef_NR99_tax_silva.fasta.gz.md5", "https://www.arb-silva.de/fileadmin/silva_databases/current/Exports/SILVA_138.1_SSURef_tax_silva.fasta.gz.md5" ] ]
+unite8map = [ help: "The Unite db", fmtscript: "create_unite.py", version: "8", file: [ "https://files.plutof.ut.ee/public/orig/85/30/853011150A25C68BC48CEBB4D6E389834AB0CA5D27099853274ADFB347D842AB.gz" ] ]
+silva132map = [ help: "The Silva db, version 132", fmtscript: "make_silva.sh", version: "132", file: [ "https://www.arb-silva.de/fileadmin/silva_databases/qiime/Silva_132_release.zip" ] ]
+silva132_18Smap = [ fmtscript: "make_silva18S.sh", version: "132", file: [ "https://www.arb-silva.de/fileadmin/silva_databases/qiime/Silva_132_release.zip" ] ]
+silva138map = [ help: "The Silva db, version 138 - does not work yet", fmtscript: "make_silva.sh", version: "138",  file: [ "", ""  ] ]
+gtdb_reps_05RS95map = [ help: "The gtdb db, version 05-RS95 - does not work yet", fmtscript: "format_gtdb.sh", version: "05-RS95", file: [ "https://data.gtdb.ecogenomic.org/releases/release95/95.0/genomic_files_reps/bac120_ssu_reps_r95.tar.gz", "https://data.gtdb.ecogenomic.org/releases/release95/95.0/genomic_files_reps/ar122_ssu_reps_r95.tar.gz" ] ]
+gtdb_reps_latestmap = [ fmtscript: "format_gtdb.sh", file: [ "https://data.gtdb.ecogenomic.org/releases/latest/genomic_files_reps/ar122_ssu_reps.tar.gz" ] ]
+//gtdb_reps_latestmap = [ help: "The gtdb db, latest version - does not work yet", fmtscript: "format_gtdb.sh", version: "latest", file: [ "https://data.gtdb.ecogenomic.org/releases/latest/genomic_files_reps/bac120_ssu_reps.tar.gz", "https://data.gtdb.ecogenomic.org/releases/latest/genomic_files_reps/ar122_ssu_reps.tar.gz" ] ]
 
-taxon_db_maps = [ "unite": unite8map, "silva=132": silva132map, "silva=138": silva138map, "silva": silva138map ]
+taxon_db_maps = [ "unite": unite8map, "silva=132": silva132map, "silva18S=132": silva132_18Smap, "silva=138": silva138map, "silva": silva132map, "gtdb=05-RS95": gtdb_reps_05RS95map, "gtdb": gtdb_reps_latestmap ]
+
+if( params.taxon_reference ){
+        Channel.fromList(taxon_db_maps["$params.taxon_reference"]["file"])
+                .map { file(it) }
+                .into { ch_db_input_to_format; ch_db_check }
+} 
+
+//System.err.println(gtdb_reps_latestmap["file"])
+//ch_db_check.view()
 
 /*
  * Import input files
@@ -239,7 +252,7 @@ if (params.double_primer && params.retain_untrimmed) {
 }
 
 if (!params.classifier) {
-        if (!(params.taxon_reference == 'silva' || params.taxon_reference == 'unite')) exit 1, "--taxon_reference need to be set to either 'silva' or 'unite'"
+        if (!(params.taxon_reference.startsWith('silva') || params.taxon_reference.startsWith('unite') || params.taxon_reference.startsWith('gtdb'))) exit 1, "--taxon_reference need to be set to either 'silva', 'unite' or 'gtdb'"
 }
 
 if (params.classifier && params.makeClassifier) {
@@ -787,10 +800,32 @@ if( !params.classifier ){
 			.set { ch_ref_database }		
 	}
 
+        process format_db_for_classifier {
+      
+                input:
+                file database from ch_db_input_to_format.collect()
+                //database=file(https://data.gtdb.ecogenomic.org/releases/latest/genomic_files_reps/ar122_ssu_reps.tar.gz)
+                //file db from Channel.fromList(taxon_db_maps["$params.taxon_reference"]["file"]).map { file(it) }
+
+                output:
+                file("db.fna") into ch_fasta_to_classifier
+                file("db.tax") into ch_tax_to_classifier
+
+                when:
+                !params.onlyDenoising || !params.untilQ2import
+
+                script:
+                """
+                ${taxon_db_maps["$params.taxon_reference"]["fmtscript"]} $database
+                """
+        }
+
 	process classifier_extract_seq {
 
 		input:
-		file database from ch_ref_database
+                file("db.fna") from ch_fasta_to_classifier
+                file("db.tax") from ch_tax_to_classifier
+                
 		env MATPLOTLIBRC from ch_mpl_for_classifier_extract_seq
 
 		output:
@@ -805,17 +840,6 @@ if( !params.classifier ){
 		"""
 		export HOME="\${PWD}/HOME"
 
-		if [ ${params.taxon_reference} = \"unite\" ]; then
-                        create_unite_taxfile.py $database db.fa db.tax
-			fasta=\"db.fa\"
-		        taxonomy=\"db.tax\"
-		else
-			unzip -qq $database
-			fasta=\"SILVA_132_QIIME_release/rep_set/rep_set_16S_only/${params.dereplication}/silva_132_${params.dereplication}_16S.fna\"
-			taxonomy=\"SILVA_132_QIIME_release/taxonomy/16S_only/${params.dereplication}/consensus_taxonomy_7_levels.txt\"
-		fi
-
-
 		if [ \"${params.classifier_removeHash}\" = \"true\" ]; then
 			sed \'s/#//g\' \$taxonomy >taxonomy-${params.dereplication}_removeHash.txt
 			taxonomy=\"taxonomy-${params.dereplication}_removeHash.txt\"
@@ -824,11 +848,11 @@ if( !params.classifier ){
 
 		### Import
 		qiime tools import --type \'FeatureData[Sequence]\' \
-			--input-path \$fasta \
+			--input-path db.fna \
 			--output-path ref-seq-${params.dereplication}.qza
 		qiime tools import --type \'FeatureData[Taxonomy]\' \
 			--input-format HeaderlessTSVTaxonomyFormat \
-			--input-path \$taxonomy \
+			--input-path db.tax \
 			--output-path ref-taxonomy-${params.dereplication}.qza
 
 		#Extract sequences based on primers
