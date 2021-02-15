@@ -252,6 +252,7 @@
                 "makeClassifier": {
                     "type": "boolean",
                     "desription": "Used to only prepare the reference database, useful while debugging or testing different reference databases"
+                }
             }
         },
         "skipping_specific_steps": {
