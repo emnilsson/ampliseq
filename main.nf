@@ -172,9 +172,8 @@ unite8map = [ help: "The Unite db", fmtscript: "create_unite.py", version: "8", 
 silva132map = [ help: "The Silva db, version 132", fmtscript: "make_silva.sh", version: "132", file: [ "https://www.arb-silva.de/fileadmin/silva_databases/qiime/Silva_132_release.zip" ] ]
 silva132_18Smap = [ fmtscript: "make_silva18S.sh", version: "132", file: [ "https://www.arb-silva.de/fileadmin/silva_databases/qiime/Silva_132_release.zip" ] ]
 silva138map = [ help: "The Silva db, version 138 - does not work yet", fmtscript: "make_silva.sh", version: "138",  file: [ "", ""  ] ]
-gtdb_reps_05RS95map = [ help: "The gtdb db, version 05-RS95 - does not work yet", fmtscript: "format_gtdb.sh", version: "05-RS95", file: [ "https://data.gtdb.ecogenomic.org/releases/release95/95.0/genomic_files_reps/bac120_ssu_reps_r95.tar.gz", "https://data.gtdb.ecogenomic.org/releases/release95/95.0/genomic_files_reps/ar122_ssu_reps_r95.tar.gz" ] ]
-gtdb_reps_latestmap = [ fmtscript: "format_gtdb.sh", file: [ "https://data.gtdb.ecogenomic.org/releases/latest/genomic_files_reps/ar122_ssu_reps.tar.gz" ] ]
-//gtdb_reps_latestmap = [ help: "The gtdb db, latest version - does not work yet", fmtscript: "format_gtdb.sh", version: "latest", file: [ "https://data.gtdb.ecogenomic.org/releases/latest/genomic_files_reps/bac120_ssu_reps.tar.gz", "https://data.gtdb.ecogenomic.org/releases/latest/genomic_files_reps/ar122_ssu_reps.tar.gz" ] ]
+gtdb_reps_05RS95map = [ help: "The gtdb db, version 05-RS95", fmtscript: "format_gtdb.sh", version: "05-RS95", file: [ "https://data.ace.uq.edu.au/public/gtdb/data/releases/release95/95.0/genomic_files_reps/bac120_ssu_reps_r95.tar.gz", "https://data.ace.uq.edu.au/public/gtdb/data/releases/release95/95.0/genomic_files_reps/ar122_ssu_reps_r95.tar.gz" ] ]
+gtdb_reps_latestmap = [ help: "The gtdb db, latest version", fmtscript: "format_gtdb.sh", version: "latest", file: [ "https://data.ace.uq.edu.au/public/gtdb/data/releases/latest/genomic_files_reps/bac120_ssu_reps.tar.gz", "https://data.ace.uq.edu.au/public/gtdb/data/releases/latest/genomic_files_reps/ar122_ssu_reps.tar.gz" ] ]
 
 taxon_db_maps = [ "unite": unite8map, "silva=132": silva132map, "silva18S=132": silva132_18Smap, "silva=138": silva138map, "silva": silva132map, "gtdb=05-RS95": gtdb_reps_05RS95map, "gtdb": gtdb_reps_latestmap ]
 
