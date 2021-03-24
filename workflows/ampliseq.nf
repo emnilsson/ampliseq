@@ -117,6 +117,7 @@ multiqc_options.args       += params.multiqc_title ? " --title \"$params.multiqc
 
 def dada2_taxonomy_options  = modules['dada2_taxonomy']
 dada2_taxonomy_options.args += params.pacbio ? ", tryRC = TRUE" : ""
+dada2_taxonomy_options.args += params.dada_ref_taxonomy ? "${params.genomes[params.dada_ref_taxonomy]["taxlevels"]}" : ""
 
 def dada2_addspecies_options  = modules['dada2_addspecies']
 dada2_addspecies_options.args += params.pacbio ? ", tryRC = TRUE" : ""
